@@ -19,4 +19,4 @@ $C000#RESET#0
 $E021#sprites#1
 $C0C0#NMI#0
 $E020#spritelen#1
-$0006#CharSpeed#F0
+$0002#CharSpeed#F0
