@@ -68,11 +68,11 @@ LoadSpritesLoop:
     CPX spritelen
     BNE LoadSpritesLoop
 
-LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
-STA $2000
+  LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
+  STA $2000
 
-LDA #%00010000   ; enable sprites
-STA $2001
+  LDA #%00010000   ; enable sprites
+  STA $2001
 
 Forever:
   JMP Forever     ;jump back to Forever, infinite loop
