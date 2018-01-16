@@ -68,53 +68,45 @@ LoadSpritesLoop:
     CPX spritelen
     BNE LoadSpritesLoop
 
-  LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
+
+LoadBackground:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$20
+  STA $2006             ; write the high byte of $2000 address
+  LDA #$00
+  STA $2006             ; write the low byte of $2000 address
+  LDX #$00              ; start out at 0
+LoadBackgroundLoop:
+  LDA nametable, x     ; load data from address (background + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$80              ; Compare X to hex $80, decimal 128 - copying 128 bytes
+  BNE LoadBackgroundLoop  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
+                        ; if compare was equal to 128, keep going down
+
+LoadAttribute:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$23
+  STA $2006             ; write the high byte of $23C0 address
+  LDA #$C0
+  STA $2006             ; write the low byte of $23C0 address
+  LDX #$00              ; start out at 0
+LoadAttributeLoop:
+  LDA attribute, x      ; load data from address (attribute + the value in x)
+  STA $2007             ; write to PPU
+  INX                   ; X = X + 1
+  CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
+  BNE LoadAttributeLoop
+
+  LDA #%10010000 ;enable NMI, sprites from Pattern 0, background from Pattern 1
   STA $2000
 
-  LDA #%00010000   ; enable sprites
+  LDA #%00011110 ; enable sprites, enable background
   STA $2001
+
 
 Forever:
   JMP Forever     ;jump back to Forever, infinite loop
-
-
-BtnDwn:
-  LDA $0200
-  CLC
-  ADC #CharSpeed
-  STA $0200
-  LDA $0204
-  CLC
-  ADC #CharSpeed
-  STA $0204
-  LDA $0208
-  CLC
-  ADC #CharSpeed
-  STA $0208
-  LDA $020C
-  CLC
-  ADC #CharSpeed
-  STA $020C
-  JMP updatescreen
-
-BtnRight:
-  LDA $0203
-  CLC
-  ADC #CharSpeed
-  STA $0203
-  LDA $0207
-  CLC
-  ADC #CharSpeed
-  STA $0207
-  LDA $020B
-  CLC
-  ADC #CharSpeed
-  STA $020B
-  LDA $020F
-  CLC
-  ADC #CharSpeed
-  STA $020F
-  JMP updatescreen
 
 
 NMI:
@@ -141,7 +133,7 @@ NMI:
   BNE BtnUp
   LDA $4016     ; player 1 - Down
   AND #%00000001
-  BNE BtnDwn
+  BNE BtnDown
 
   LDA $4016     ; player 1 - Left
   AND #%00000001
@@ -151,6 +143,22 @@ NMI:
   AND #%00000001
   BNE BtnRight
 
+  jmp updatescreen
+
+BtnUp:
+  jsr MovUp
+  jmp updatescreen
+BtnDown:
+  jsr MovDown
+  jmp updatescreen
+BtnLeft:
+  jsr MovLeft
+  jmp updatescreen
+BtnRight:
+  jsr MovRight
+  jmp updatescreen
+
+
 updatescreen:
     LDA #$00
     STA $2003  ; set the low byte (00) of the RAM address
@@ -159,7 +167,7 @@ updatescreen:
 
   RTI        ; return from interrupt
 
-BtnUp:
+MovUp:
   LDA $0200
   SEC
   SBC #CharSpeed
@@ -176,9 +184,28 @@ BtnUp:
   SEC
   SBC #CharSpeed
   STA $020C
-  JMP updatescreen
+  RTS
 
-BtnLeft:
+MovDown:
+  LDA $0200
+  CLC
+  ADC #CharSpeed
+  STA $0200
+  LDA $0204
+  CLC
+  ADC #CharSpeed
+  STA $0204
+  LDA $0208
+  CLC
+  ADC #CharSpeed
+  STA $0208
+  LDA $020C
+  CLC
+  ADC #CharSpeed
+  STA $020C
+  RTS
+
+MovLeft:
   LDA $0203
   SEC
   SBC #CharSpeed
@@ -195,7 +222,26 @@ BtnLeft:
   SEC
   SBC #CharSpeed
   STA $020F
-  JMP updatescreen
+  RTS
+
+MovRight:
+  LDA $0203
+  CLC
+  ADC #CharSpeed
+  STA $0203
+  LDA $0207
+  CLC
+  ADC #CharSpeed
+  STA $0207
+  LDA $020B
+  CLC
+  ADC #CharSpeed
+  STA $020B
+  LDA $020F
+  CLC
+  ADC #CharSpeed
+  STA $020F
+  RTS
 
 ;;;;;;;;;;;;;;
 
@@ -204,8 +250,7 @@ BtnLeft:
   .bank 1
   .org $E000
 palette:
-  .db $0F,$31,$32,$33,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F
-  .db $0F,$1C,$15,$14,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C
+  .db $22,$29,$1A,$0F,$22,$36,$17,$0F,$22,$30,$21,$0F,$22,$27,$17,$0F
 spritelen:
   .db $10
 sprites:
@@ -215,6 +260,20 @@ sprites:
   .db $80, $33, $00, $88
   .db $88, $34, $00, $80
   .db $88, $35, $00, $88
+
+nametable:
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 1
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky ($24 = sky)
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 2
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 3
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 4
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+attribute:
+  .db %00000000, %00010000, %0010000, %00010000, %00000000, %00000000, %00000000, %00110000
+
+
 
 
   .org $FFFA     ;first of the three vectors starts here
